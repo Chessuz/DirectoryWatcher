@@ -5,7 +5,7 @@ interface
 {$IFDEF FPC}{$MODE DELPHI}{$ENDIF}
 
 uses
-  SysUtils, Classes, SyncObjs, DirectoryWatcherAPI, EventTriggerThread;
+  SysUtils, Classes, SyncObjs, DirectoryWatcherAPI, EventTriggerThread, Windows;
 
 type
   opTyp = set of (
@@ -41,7 +41,7 @@ type
 implementation
 
 uses
-  JwaWinBase, Windows;
+  JwaWinBase;
 
 const
   FILE_ACTION_ADDED = $1;
@@ -102,6 +102,7 @@ var
   Overlap : TOverlapped;
   WaitResult: DWORD;
   EventArray : Array[0..2] of THandle;
+  x:Pointer;
   FileName : String;
   HandleAsString: String;
   FilePath: String;
@@ -126,8 +127,9 @@ begin
   SuspEvent := TEvent.Create(Nil, False, False, HandleAsString + 'W');
 
   EventArray[0] := FileEvent;
-  EventArray[1] := Integer(TermEvent.Handle^);
-  EventArray[2] := Integer(SuspEvent.Handle^);
+//  x := TermEvent.Handle^;
+  EventArray[1] := Integer(TermEvent.Handle);
+  EventArray[2] := Integer(SuspEvent.Handle);
 
   dwBufLen := 65535;
   pBuffer := AllocMem(dwBufLen);

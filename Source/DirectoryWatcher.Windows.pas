@@ -49,7 +49,8 @@ var
   StopEvent: TEvent;
 begin
   StopEvent := TEvent.Create(Nil, False, False, FTermEventName);
-  PulseEvent(Integer(StopEvent.Handle^));
+//  PulseEvent(Integer(StopEvent.Handle^));
+  PulseEvent(Integer(StopEvent.Handle));
   StopEvent.Free;
 end;
 

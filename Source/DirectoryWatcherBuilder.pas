@@ -20,27 +20,29 @@ type
   end;
   
 implementation
+uses
+  DirectoryWatcher.Windows;
+//{$IFDEF WINDOWS}
+//  uses DirectoryWatcher.Windows;
+//{$ENDIF}
+//{$IFDEF DARWIN}
+//  uses DirectoryWatcher.Mac;
+//{$ENDIF}
+//{$IFDEF LINUX}
+//  uses DirectoryWatcher.Linux;
+//{$ENDIF}
 
-{$IFDEF WINDOWS}
-  uses DirectoryWatcher.Windows;
-{$ENDIF}
-{$IFDEF DARWIN}
-  uses DirectoryWatcher.Mac;
-{$ENDIF}
-{$IFDEF LINUX}
-  uses DirectoryWatcher.Linux;
-{$ENDIF}
-
-type 
-  {$IFDEF WINDOWS}
-    TDirectoryWatcher = TDirectoryWatcherWindows;
-  {$ENDIF}
-  {$IFDEF DARWIN}
-    TDirectoryWatcher = TDirectoryWatcherMac;
-  {$ENDIF}
-  {$IFDEF LINUX}
-    TDirectoryWatcher = TDirectoryWatcherLinux;
-  {$ENDIF}
+type
+  TDirectoryWatcher = TDirectoryWatcherWindows;
+//  {$IFDEF WINDOWS}
+//    TDirectoryWatcher = TDirectoryWatcherWindows;
+//  {$ENDIF}
+//  {$IFDEF DARWIN}
+//    TDirectoryWatcher = TDirectoryWatcherMac;
+//  {$ENDIF}
+//  {$IFDEF LINUX}
+//    TDirectoryWatcher = TDirectoryWatcherLinux;
+//  {$ENDIF}
 
 class function TDirectoryWatcherBuilder.New: IDirectoryWatcherBuilder;
 begin

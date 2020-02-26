@@ -5,29 +5,33 @@ interface
 {$IFDEF FPC}{$MODE DELPHI}{$ENDIF}
 
 uses
-  SysUtils, Classes, SyncObjs, FGL, DirectoryWatcherAPI;
+  SysUtils, Classes, SyncObjs, System.Generics.Collections, DirectoryWatcherAPI;
 
 type
   TEventTriggerThread = class(TThread)
-  private type 
-    TEventTypeList = TFPGList<TDirectoryEventType>;
+  private type
+    TEventTypeList = TList<TDirectoryEventType>;
   private
     FOnDirectoryEvent: TDirectoryEvent;
-    FStoredEvents: TFPGMap<String, TEventTypeList>;
+    FStoredEvents: TDictionary<String, TEventTypeList>;
+    FStoredEventsAux: TList<String>;
     FCriticalSection: TCriticalSection;
     procedure RemoveEventsForIndex(const Idx: Integer);
     procedure TriggerEvents;
     procedure TriggerEventsForIndex(const Idx: Integer);
-    procedure RemoveDuplicateModifiedEvents(const EventTypeList: TEventTypeList);
-    procedure TriggerEventsForFile(const FilePath: String; const EventTypeList: TEventTypeList);
+    procedure RemoveDuplicateModifiedEvents(const EventTypeList
+      : TEventTypeList);
+    procedure TriggerEventsForFile(const FilePath: String;
+      const EventTypeList: TEventTypeList);
   protected
     procedure Execute; override;
   public
     constructor Create(const OnDirectoryEvent: TDirectoryEvent);
     destructor Destroy; override;
-    procedure EnqueueEvent(const FilePath: String; EventType: TDirectoryEventType);
+    procedure EnqueueEvent(const FilePath: String;
+      EventType: TDirectoryEventType);
   end;
-  
+
 implementation
 
 constructor TEventTriggerThread.Create(const OnDirectoryEvent: TDirectoryEvent);
@@ -36,7 +40,8 @@ begin
   FreeOnTerminate := False;
   FOnDirectoryEvent := OnDirectoryEvent;
   FCriticalSection := TCriticalSection.Create;
-  FStoredEvents := TFPGMap<String, TEventTypeList>.Create;
+  FStoredEvents := TDictionary<String, TEventTypeList>.Create;
+  FStoredEventsAux := TList<String>.Create;
 end;
 
 destructor TEventTriggerThread.Destroy;
@@ -47,6 +52,7 @@ begin
     RemoveEventsForIndex(I);
 
   FStoredEvents.Free;
+  FStoredEventsAux.Free;
   FCriticalSection.Free;
   inherited;
 end;
@@ -67,21 +73,19 @@ begin
   end;
 end;
 
-procedure TEventTriggerThread.EnqueueEvent(const FilePath: String; EventType: TDirectoryEventType);
+procedure TEventTriggerThread.EnqueueEvent(const FilePath: String;
+  EventType: TDirectoryEventType);
 var
   EventTypeList: TEventTypeList;
-  Idx: Integer;
 begin
   FCriticalSection.Enter;
   try
-    Idx := FStoredEvents.IndexOf(FilePath);
-    if Idx < 0 then
+    if not FStoredEvents.TryGetValue(FilePath, EventTypeList) then
     begin
       EventTypeList := TEventTypeList.Create;
-      FStoredEvents.Add(FilePath, EventTypeList);        
-    end
-    else
-      EventTypeList := FStoredEvents.Data[Idx];
+      FStoredEvents.Add(FilePath, EventTypeList);
+      FStoredEventsAux.Add(FilePath);
+    end;
 
     EventTypeList.Add(EventType);
   finally
@@ -90,9 +94,13 @@ begin
 end;
 
 procedure TEventTriggerThread.RemoveEventsForIndex(const Idx: Integer);
+var
+  key:String;
 begin
-  FStoredEvents.Data[Idx].Free;
-  FStoredEvents.Remove(FStoredEvents.Keys[Idx]);
+  key := FStoredEventsAux.Items[idx];
+  FStoredEvents.Items[key].Free;
+  FStoredEvents.Remove(key);
+  FStoredEventsAux.Delete(idx);
 end;
 
 procedure TEventTriggerThread.TriggerEvents;
@@ -100,7 +108,7 @@ begin
   while FStoredEvents.Count > 0 do
   begin
     TriggerEventsForIndex(0);
-    RemoveEventsForIndex(0);    
+    RemoveEventsForIndex(0);
   end;
 end;
 
@@ -108,9 +116,11 @@ procedure TEventTriggerThread.TriggerEventsForIndex(const Idx: Integer);
 var
   EventTypeList: TEventTypeList;
   FilePath: String;
+  key:String;
 begin
-  FilePath := FStoredEvents.Keys[Idx];
-  EventTypeList := FStoredEvents.Data[Idx];
+  key := FStoredEventsAux.Items[Idx];
+  FilePath := key;
+  EventTypeList := FStoredEvents.Items[key];
   RemoveDuplicateModifiedEvents(EventTypeList);
   TriggerEventsForFile(FilePath, EventTypeList);
 end;
